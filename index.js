@@ -28,6 +28,14 @@ async function run() {
   try {
     await client.connect();
 
+    const db = client.db("artify-db")
+    const artCollection = db.collection("arts")
+
+    app.get('/arts', async(req,res)=>{
+        const result = await artCollection.find().toArray();
+        res.send(result);
+    })
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
