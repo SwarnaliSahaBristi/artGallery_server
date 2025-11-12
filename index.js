@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express()
 require('dotenv').config()
 const port = process.env.PORT || 3000
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 //middleware
 app.use(cors());
@@ -30,9 +30,29 @@ async function run() {
 
     const db = client.db("artify-db")
     const artCollection = db.collection("arts")
+    const favCollection = db.collection("favorites")
 
     app.get('/arts', async(req,res)=>{
         const result = await artCollection.find().toArray();
+        res.send(result);
+    })
+
+    app.post('/arts', async(req,res)=>{
+        const data = req.body;
+        const result = await artCollection.insertOne(data);
+        res.send(result);
+    })
+
+    app.get('/search', async(req,res)=>{
+        const search_text = req.query.search;
+        const result = await artCollection.find({title: {$regex: search_text, $options: "i"}}).toArray();
+        res.send(result);
+    })
+
+    app.get('/arts/:id', async(req,res)=>{
+        const {id} = req.params;
+        const objectId = new ObjectId(id);
+        const result = await artCollection.findOne({ _id: objectId });
         res.send(result);
     })
 
