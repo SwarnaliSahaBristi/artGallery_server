@@ -1,3 +1,4 @@
 node_modules
 .env
 artify-client-d71f6-firebase-adminsdk-fbsvc-ec340bc3ee.json
+.vercel

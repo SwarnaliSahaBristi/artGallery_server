@@ -2,11 +2,10 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const admin = require("firebase-admin");
-const serviceAccount = require("./artify-client-d71f6-firebase-adminsdk-fbsvc-ec340bc3ee.json");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
+const serviceAccount = require('./artify-client-d71f6-firebase-adminsdk-fbsvc-ec340bc3ee.json')
 //middleware
 app.use(cors());
 app.use(express.json());
@@ -14,6 +13,10 @@ app.use(express.json());
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
+
+// index.js
+// const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+// const serviceAccount = JSON.parse(decoded);
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster2002.1tfbne8.mongodb.net/?appName=Cluster2002`;
@@ -54,7 +57,7 @@ app.get("/", (req, res) => {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db("artify-db");
     const artCollection = db.collection("arts");
@@ -168,7 +171,7 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
