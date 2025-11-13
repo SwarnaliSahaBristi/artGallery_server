@@ -69,6 +69,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/arts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await artCollection.deleteOne(query);
+      res.send(result);
+    });
+
     app.get("/search", async (req, res) => {
       const search_text = req.query.search;
       const result = await artCollection
@@ -83,6 +90,23 @@ async function run() {
       const result = await artCollection.findOne({ _id: objectId });
       res.send(result);
     });
+
+    app.post("/favorites", async (req, res) => {
+      const data = req.body;
+      const result = await favCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/favorites", async (req, res) => {
+      const result = await favCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.delete("/favorites/:id", async(req,res)=>{
+        const id = req.params.id;
+        const result = await favCollection.deleteOne({ _id: new ObjectId(id) });
+        res.send(result);
+    })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
