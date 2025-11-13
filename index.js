@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const admin = require("firebase-admin");
+const serviceAccount = require("./artify-client-d71f6-firebase-adminsdk-fbsvc-ec340bc3ee.json");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -8,6 +10,11 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 //middleware
 app.use(cors());
 app.use(express.json());
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster2002.1tfbne8.mongodb.net/?appName=Cluster2002`;
 
@@ -19,6 +26,27 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const verifyToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return res.status(401).send({
+      message: "unauthorized access. Token not found!",
+    });
+  }
+
+  const token = authorization.split(" ")[1];
+  try {
+    await admin.auth().verifyIdToken(token);
+
+    next();
+  } catch (error) {
+    res.status(401).send({
+      message: "unauthorized access.",
+    });
+  }
+};
 
 app.get("/", (req, res) => {
   res.send("Art GAllery server is starting!");
@@ -33,23 +61,35 @@ async function run() {
     const favCollection = db.collection("favorites");
 
     app.get("/arts", async (req, res) => {
-      const result = await artCollection.find().toArray();
+      const result = await artCollection
+        .find({ visibility: "Public" })
+        .toArray();
       res.send(result);
     });
 
-    app.post("/arts", async (req, res) => {
+    app.get("/arts", async (req, res) => {
+      const category = req.query.category;
+      const query = {};
+      if (category) {
+        query.category = category
+      }
+      const result = await artCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.post("/arts",verifyToken, async (req, res) => {
       const data = req.body;
       const result = await artCollection.insertOne(data);
       res.send(result);
     });
 
-    app.get("/my-gallery", async (req, res) => {
+    app.get("/my-gallery",verifyToken, async (req, res) => {
       const email = req.query.email;
       const result = await artCollection.find({ userEmail: email }).toArray();
       res.send(result);
     });
 
-    app.put("/arts/:id", async (req, res) => {
+    app.put("/arts/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const updatedArtwork = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -69,7 +109,27 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/arts/:id", async (req, res) => {
+    app.patch("/arts/like/:id",verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+
+      const result = await artCollection.updateOne(filter, {
+        $inc: { likesCount: 1 },
+      });
+
+      res.send(result);
+    });
+
+    app.get("/featured-arts", async (req, res) => {
+      const result = await artCollection
+        .find({})
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .toArray();
+      res.send(result);
+    });
+
+    app.delete("/arts/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await artCollection.deleteOne(query);
@@ -84,29 +144,29 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/arts/:id", async (req, res) => {
+    app.get("/arts/:id",verifyToken, async (req, res) => {
       const { id } = req.params;
       const objectId = new ObjectId(id);
       const result = await artCollection.findOne({ _id: objectId });
       res.send(result);
     });
 
-    app.post("/favorites", async (req, res) => {
+    app.post("/favorites",verifyToken, async (req, res) => {
       const data = req.body;
       const result = await favCollection.insertOne(data);
       res.send(result);
     });
 
-    app.get("/favorites", async (req, res) => {
+    app.get("/favorites",verifyToken, async (req, res) => {
       const result = await favCollection.find().toArray();
       res.send(result);
     });
 
-    app.delete("/favorites/:id", async(req,res)=>{
-        const id = req.params.id;
-        const result = await favCollection.deleteOne({ _id: new ObjectId(id) });
-        res.send(result);
-    })
+    app.delete("/favorites/:id",verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await favCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
