@@ -5,19 +5,18 @@ const admin = require("firebase-admin");
 require("dotenv").config();
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const serviceAccount = require('./artify-client-d71f6-firebase-adminsdk-fbsvc-ec340bc3ee.json')
+const serviceAccount = require("./artify-client-d71f6-firebase-adminsdk-fbsvc-95226d59a5.json");
 //middleware
 app.use(cors());
 app.use(express.json());
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
 
 // index.js
 // const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
 // const serviceAccount = JSON.parse(decoded);
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster2002.1tfbne8.mongodb.net/?appName=Cluster2002`;
 
@@ -41,8 +40,8 @@ const verifyToken = async (req, res, next) => {
 
   const token = authorization.split(" ")[1];
   try {
-    await admin.auth().verifyIdToken(token);
-
+    const decoded = await admin.auth().verifyIdToken(token);
+    req.user = decoded;
     next();
   } catch (error) {
     res.status(401).send({
@@ -74,25 +73,25 @@ async function run() {
       const category = req.query.category;
       const query = {};
       if (category) {
-        query.category = category
+        query.category = category;
       }
       const result = await artCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.post("/arts",verifyToken, async (req, res) => {
+    app.post("/arts", verifyToken, async (req, res) => {
       const data = req.body;
       const result = await artCollection.insertOne(data);
       res.send(result);
     });
 
-    app.get("/my-gallery",verifyToken, async (req, res) => {
+    app.get("/my-gallery", verifyToken, async (req, res) => {
       const email = req.query.email;
       const result = await artCollection.find({ userEmail: email }).toArray();
       res.send(result);
     });
 
-    app.put("/arts/:id",verifyToken, async (req, res) => {
+    app.put("/arts/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const updatedArtwork = req.body;
       const filter = { _id: new ObjectId(id) };
@@ -112,7 +111,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/arts/like/:id",verifyToken, async (req, res) => {
+    app.patch("/arts/like/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
 
@@ -132,7 +131,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/arts/:id",verifyToken, async (req, res) => {
+    app.delete("/arts/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await artCollection.deleteOne(query);
@@ -147,25 +146,30 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/arts/:id",verifyToken, async (req, res) => {
+    app.get("/arts/:id", verifyToken, async (req, res) => {
       const { id } = req.params;
       const objectId = new ObjectId(id);
       const result = await artCollection.findOne({ _id: objectId });
       res.send(result);
     });
 
-    app.post("/favorites",verifyToken, async (req, res) => {
+    app.post("/favorites", verifyToken, async (req, res) => {
       const data = req.body;
+      const email = req.user.email;
+      console.log(email)
+      console.log(data)
       const result = await favCollection.insertOne(data);
       res.send(result);
     });
 
-    app.get("/favorites",verifyToken, async (req, res) => {
-      const result = await favCollection.find().toArray();
+    app.get("/favorites", verifyToken, async (req, res) => {
+      const email = req.user.email;
+      console.log(email)
+      const result = await favCollection.find({ userEmail: email }).toArray();
       res.send(result);
     });
 
-    app.delete("/favorites/:id",verifyToken, async (req, res) => {
+    app.delete("/favorites/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const result = await favCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -173,7 +177,7 @@ async function run() {
 
     // await client.db("admin").command({ ping: 1 });
     console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
+      "Pinged your deployment. You successfully connected to MongoDB!",
     );
   } finally {
   }
